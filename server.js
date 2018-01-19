@@ -12,11 +12,6 @@ app.use(express.static(__dirname + '/public'));
 app.set('port', process.env.PORT || 3000);
 app.locals.title = 'BackendyBox';
 
-app.locals.messages = [
-  {id: 1, message: 'hello world'},
-  {id: 2, message: 'goodbye cruel world'}
-]
-
 ///*///  GET ALL MESSAGES  ///*///
 app.get('/api/v1/messages', (request, response) => {
   database('messages').select()
@@ -96,26 +91,21 @@ app.put('/api/v1/messages', async (request, response) => {
   };
 });
 
-
-//////  DELETE MESSAGE  //////
-app.delete('/api/v1/messages/:id', (request, response) => {
+///*///  DELETE MESSAGE  ///*///
+app.delete('/api/v1/messages/:id', async (request, response) => {
   const { id } = request.params;
-  const messageToDelete = app.locals.messages.find(message => message.id === parseInt(id));
 
-  if (messageToDelete) {
-    const updatedMessagesArray = app.locals.messages.filter(message => message.id !== parseInt(id));
-    app.locals.messages = updatedMessagesArray;
-    return response.status(200).send({
-      deleted: `Message id ${id}`
-    });
+  if (id) {
+    await database('messages').where('id', id).del()
+    return response.status(201).send({ success: 'message deleted' })
   } else {
     return response.status(422).send({
-      error: `Message id ${id} does not exist`
+      error: 'Message ID required'
     });
   };
 });
 
-//////  LISTEN  //////
+///*///  LISTEN  ///*///
 app.listen(app.get('port'), () => {
   console.log(`${app.locals.title} is running on ${app.get('port')}.`);
 });
