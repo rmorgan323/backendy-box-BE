@@ -3,14 +3,14 @@ const seedMessages = [
     title: "Figure Me This",
     body: "I'm learning how all this backendy stuff works.",
     author: "Roberto",
-    authorId: 1,
+    author_id: 1,
     quality: 2
   },
   {
     title: "Now this is bold",
     body: "If this works, I may be a genius.",
     author: "Roberto",
-    authorId: 1,
+    author_id: 1,
     quality: 2
   }
 ]
@@ -20,7 +20,7 @@ exports.seed = function(knex, Promise) {
     .then(() => {
       return Promise.all([
         knex('messages').insert(seedMessages)
-        .then(() => console.log('Seeding complete!'))
+        .then(() => console.log('Seeding messages complete!'))
         .catch(error => console.log(`Error seeding data: ${error}`))
       ])
     })

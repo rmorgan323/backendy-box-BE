@@ -1,21 +1,97 @@
 const express = require('express');
 const app = express();
+const cors = require('express-cors');
 const bodyParser = require('body-parser');
 const environment = process.env.NODE_ENV || 'development';
 const configuration = require('./knexfile')[environment];
 const database = require('knex')(configuration);
+const { KEYUTIL, KJUR, b64utoutf8 } = require('jsrsasign');
+const key = require('./pubKey');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
-app.set('port', process.env.PORT || 3000);
-app.locals.title = 'BackendyBox';
+const corsOptions = {
+  allowedOrigins: ['localhost:3001'],
+  preflightContinue: true,
+  headers: ['Content-Type', 'x-token']
+};
 
-app.locals.messages = [
-  {id: 1, message: 'hello world'},
-  {id: 2, message: 'goodbye cruel world'}
-]
+app.use(cors(corsOptions));
+app.set('port', process.env.PORT || 3000);
+
+app.listen(app.get('port'), () => {
+  console.log(`${app.locals.title} is running on ${app.get('port')}.`);
+});
+
+/////////*********/////////  VALIDATION  /////////********/////////
+
+const validate = (request, response) => {
+  try {
+    var jwToken = request.headers['x-token'] !== 'null' ? request.headers['x-token'] : '';
+    var pubkey = KEYUTIL.getKey(key);
+    var isValid = KJUR.jws.JWS.verifyJWT(jwToken, pubkey, {alg: ['RS256']});
+    if (isValid) {
+      var payloadObj = KJUR.jws.JWS.readSafeJSONString(b64utoutf8(jwToken.split(".")[1]));
+      return payloadObj;
+    }
+  } catch (e) {
+    response.status(401).json({error: 'Invalid token.  Please login again.'});
+  }
+};
+
+///*///  GET/CREATE USER  ///*///
+
+const getCurrentUser =  async ( request, response ) => {
+  const userObject = await validate(request, response);
+  if (!userObject) {
+    return;
+  }
+
+  const newUser = {
+    email: userObject.un,
+    name: userObject.n,
+    authrocket_id: userObject.uid
+  };
+
+  let foundUser = null;
+  await database('users').where('authrocket_id', userObject.uid).select()
+    .then( async (user) =>{
+      if (!user.length) {
+        foundUser = await createUser( response, newUser );
+      } else {
+        foundUser = user[0];
+      }
+    })
+    .catch(error => {
+      response.status(404).json({error});
+    });
+  return foundUser;
+};
+
+const createUser = async ( response, user ) => {
+  let foundUser;
+  await database('users').insert(user)
+    .then(() => {
+      foundUser = user;
+    })
+    .catch( error => {
+      response.status(500).json({error});
+    });
+  return foundUser;
+};
+
+app.get('/api/v1/users', async (request, response) => { 
+  const currentUser = await getCurrentUser(request, response);
+  if (!currentUser) {
+    return;
+  }
+  database('users').where('authrocket_id', currentUser.authrocket_id).select()
+    .then((user) => {
+      response.status(200).json(user);
+    });
+});
 
 ///*///  GET ALL MESSAGES  ///*///
 app.get('/api/v1/messages', (request, response) => {
@@ -50,9 +126,9 @@ app.get('/api/v1/messages/:id', (request, response) => {
 
 ///*///  GET MESSAGES BY USER ID  ///*///
 app.get('/api/v1/messages/user/:authorId', (request, response) => {
-  const { authorId } = request.params;
+  const { author_id } = request.params;
 
-  database('messages').where('authorId', authorId).select()
+  database('messages').where('author_id', author_id).select()
     .then(messages => {
       if (messages.length) {
         return response.status(200).json(messages);
@@ -96,26 +172,17 @@ app.put('/api/v1/messages', async (request, response) => {
   };
 });
 
-
-//////  DELETE MESSAGE  //////
-app.delete('/api/v1/messages/:id', (request, response) => {
+///*///  DELETE MESSAGE  ///*///
+app.delete('/api/v1/messages/:id', async (request, response) => {
   const { id } = request.params;
-  const messageToDelete = app.locals.messages.find(message => message.id === parseInt(id));
 
-  if (messageToDelete) {
-    const updatedMessagesArray = app.locals.messages.filter(message => message.id !== parseInt(id));
-    app.locals.messages = updatedMessagesArray;
-    return response.status(200).send({
-      deleted: `Message id ${id}`
-    });
+  if (id) {
+    await database('messages').where('id', id).del()
+    return response.status(201).send({ success: 'message deleted' })
   } else {
     return response.status(422).send({
-      error: `Message id ${id} does not exist`
+      error: 'Message ID required'
     });
   };
 });
 
-//////  LISTEN  //////
-app.listen(app.get('port'), () => {
-  console.log(`${app.locals.title} is running on ${app.get('port')}.`);
-});

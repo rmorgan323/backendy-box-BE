@@ -12,6 +12,8 @@
   "dependencies": {
     "body-parser": "^1.18.2",
     "express": "^4.16.2",
+    "express-cors": "0.0.3",
+    "jsrsasign": "^8.0.4",
     "knex": "^0.14.2",
     "pg": "^7.4.1"
   }
