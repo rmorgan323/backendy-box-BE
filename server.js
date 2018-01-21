@@ -8,16 +8,25 @@ const database = require('knex')(configuration);
 const { KEYUTIL, KJUR, b64utoutf8 } = require('jsrsasign');
 const key = require('./pubKey');
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(__dirname + '/public'));
 
 const corsOptions = {
-  allowedOrigins: ['localhost:3001'],
+  allowedOrigins: ['localhost:3001', 'localhost:3000', 'rmorgan323.github.io'],
   preflightContinue: true,
   headers: ['Content-Type', 'x-token']
 };
 
+var allowCrossDomain = function(req, res, next) {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With, x-token');
+  next();
+};
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(__dirname + '/public'));
+
+app.use(allowCrossDomain)
 app.use(cors(corsOptions));
 app.set('port', process.env.PORT || 3000);
 
