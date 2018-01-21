@@ -7,7 +7,7 @@ const configuration = require('./knexfile')[environment];
 const database = require('knex')(configuration);
 const { KEYUTIL, KJUR, b64utoutf8 } = require('jsrsasign');
 const key = require('./pubKey');
-
+var pg = require('pg');
 
 const corsOptions = {
   allowedOrigins: ['localhost:3001', 'localhost:3000', 'rmorgan323.github.io'],
@@ -28,6 +28,7 @@ app.use(express.static(__dirname + '/public'));
 
 app.use(allowCrossDomain)
 app.use(cors(corsOptions));
+pg.types.setTypeParser(20, 'text', parseInt);
 app.set('port', process.env.PORT || 3000);
 
 app.listen(app.get('port'), () => {
