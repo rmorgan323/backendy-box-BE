@@ -12,7 +12,7 @@ module.exports = {
       directory: './db/seeds/dev'
     },
     useNullAsDefault: true
-  }
+  },
 
   // staging: {
   //   client: 'postgresql',
@@ -32,9 +32,7 @@ module.exports = {
 
   production: {
     client: 'pg',
-    connection: {
-      database: process.env.DATABASE_URL + `?ssl=true`,
-    },
+    connection: process.env.DATABASE_URL + `?ssl=true`,
     migrations: {
       directory: './db/migrations'
     },
