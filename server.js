@@ -211,7 +211,6 @@ app.delete('/api/v1/messages/:id', async (request, response) => {
 
   if (id) {
     const deletedMessage = await database('messages').where('id', id).select()
-    console.log(deletedMessage);
     await database('messages').where('id', id).del()
     return response.status(201).json(deletedMessage[0])
   } else {
