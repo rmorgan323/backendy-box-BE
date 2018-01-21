@@ -22,7 +22,7 @@ app.use(cors(corsOptions));
 app.set('port', process.env.PORT || 3000);
 
 app.listen(app.get('port'), () => {
-  console.log(`${app.locals.title} is running on ${app.get('port')}.`);
+  console.log(`BackendyBox is running on ${app.get('port')}.`);
 });
 
 /////////*********/////////  VALIDATION  /////////********/////////
@@ -94,7 +94,12 @@ app.get('/api/v1/users', async (request, response) => {
 });
 
 ///*///  GET ALL MESSAGES  ///*///
-app.get('/api/v1/messages', (request, response) => {
+app.get('/api/v1/messages', async (request, response) => {
+  const currentUser = await getCurrentUser(request, response);
+  if (!currentUser) {
+    return;
+  }
+
   database('messages').select()
     .then((messages) => {
       return response.status(200).json(messages);
@@ -105,7 +110,12 @@ app.get('/api/v1/messages', (request, response) => {
 });
 
 ///*///  GET MESSAGE BY MESSAGE ID ///*///
-app.get('/api/v1/messages/:id', (request, response) => {
+app.get('/api/v1/messages/:id', async (request, response) => {
+  const currentUser = await getCurrentUser(request, response);
+  if (!currentUser) {
+    return;
+  }
+
   const { id } = request.params;
 
   database('messages').where('id', id).select()
@@ -125,7 +135,12 @@ app.get('/api/v1/messages/:id', (request, response) => {
 });
 
 ///*///  GET MESSAGES BY USER ID  ///*///
-app.get('/api/v1/messages/user/:authorId', (request, response) => {
+app.get('/api/v1/messages/user/:authorId', async (request, response) => {
+  const currentUser = await getCurrentUser(request, response);
+  if (!currentUser) {
+    return;
+  }
+
   const { author_id } = request.params;
 
   database('messages').where('author_id', author_id).select()
@@ -145,11 +160,18 @@ app.get('/api/v1/messages/user/:authorId', (request, response) => {
 
 ///*///  POST NEW MESSAGE  ///*///
 app.post('/api/v1/messages', async (request, response) => {
+  const currentUser = await getCurrentUser(request, response);
+  if (!currentUser) {
+    return;
+  }
+
   const messageData = request.body;
 
   if (messageData.title.length) {
-    await database('messages').insert(messageData)
-    return response.status(201).json(messageData)
+    const insertedId = await database('messages').returning('id').insert(messageData)
+    const returnData = await database('messages').where('id', insertedId[0]).select()
+
+    return response.status(201).json(returnData[0])
   } else {
     return response.status(422).send({
       error: 'Message missing title'
@@ -159,12 +181,18 @@ app.post('/api/v1/messages', async (request, response) => {
 
 ///*///  EDIT MESSAGE  ///*///
 app.put('/api/v1/messages', async (request, response) => {
+  const currentUser = await getCurrentUser(request, response);
+  if (!currentUser) {
+    return;
+  }
+
   const { id } = request.body;
   const update = request.body;
 
   if (id) {
     await database('messages').where('id', id).update(update)
-    return response.status(201).send({ success: 'message updated' })
+    const returnData = await database('messages').where('id', id).select()
+    return response.status(201).json(returnData[0])
   } else {
     return response.status(422).send({
       error: 'Message ID required'
@@ -174,11 +202,18 @@ app.put('/api/v1/messages', async (request, response) => {
 
 ///*///  DELETE MESSAGE  ///*///
 app.delete('/api/v1/messages/:id', async (request, response) => {
+  const currentUser = await getCurrentUser(request, response);
+  if (!currentUser) {
+    return;
+  }
+  
   const { id } = request.params;
 
   if (id) {
+    const deletedMessage = await database('messages').where('id', id).select()
+    console.log(deletedMessage);
     await database('messages').where('id', id).del()
-    return response.status(201).send({ success: 'message deleted' })
+    return response.status(201).json(deletedMessage[0])
   } else {
     return response.status(422).send({
       error: 'Message ID required'
